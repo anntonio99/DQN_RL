@@ -4,7 +4,7 @@ import tensorflow as tf
 from collections import deque
 import random
 import os
-
+from pprint import pprint
 
 directory_path = os.path.dirname(os.path.realpath(__file__))
 logs = os.path.join(directory_path, 'Logs')
@@ -40,7 +40,9 @@ class Agent():
       self.q_network.build()
       self.target_network = mpnn(self.hyperparamters)  # secondary network
       self.target_network.build()
-      self.optimizer = tf.keras.optimizers.SGD(learning_rate=self.hyperparamters['learning_rate'],momentum=0.9,nesterov=True)
+      self.optimizer = tf.keras.optimizers.SGD(learning_rate=self.hyperparamters['learning_rate'],
+                                               momentum=0.9,
+                                               nesterov=True)
       self.environment = environment
 
     def _get_graph_ids(self, num_edges, num_graphs):  #  mi sa non ti serve 
@@ -52,18 +54,15 @@ class Agent():
        
 
     def act(self, environment, state, demand, source, destination, evaluate):
-        """
         
-        """
         take_random_action = False
 
-
-        
         # first k shortest paths between source and destination
         first_k_shortest_paths = environment.first_k_shortest_paths[str(source) + ':' + str(destination)]
         path = 0
-
+  
         if evaluate == False:
+        # if evaluate == False we are training so with probability epsilon we want to take a random action
           a = np.random.random()
           if a < self.epsilon:
             take_random_action = True
@@ -71,7 +70,7 @@ class Agent():
             path = np.random.randint(0, len(first_k_shortest_paths))
         
   
-        edges_topology = self.environment.edges_topology
+        edges_topology = environment.edges_topology 
         shift = np.max(edges_topology, axis=1)[:, np.newaxis] + 1 
         
 
@@ -84,10 +83,11 @@ class Agent():
         while path < len(first_k_shortest_paths):  # there may be less than k paths!
           state_copy = np.copy(state)
           # allocate the demand on all path edges
-          state_copy[path,1] += demand # la bw_allocated è la seconda colonna, trova un modo piu carino per quando ci saranno più features
+          path_edges = first_k_shortest_paths[path]
+          state_copy[path_edges,1] = demand
           features = self.get_graph_features(environment, state_copy)
           graphs_features.append(features)
-          edges_topologies.append(edges_topology + path*shift)
+          edges_topologies.append(edges_topology + path*shift) 
           if take_random_action == True:
              return path, features
           path += 1
@@ -96,18 +96,18 @@ class Agent():
         graphs_ids = tf.concat([[i]*environment.num_edges for i in range(len(first_k_shortest_paths))], axis=0) # shape: 1 x (num_edges x k)
         features = tf.concat(graphs_features, axis=0)  # shape: (num_edges x k) x num_features
         edges_topologies = tf.concat(edges_topologies, axis=1)  # shape  2 x (k x num_edge_topology)
-          
+
         list_q_values = self.q_network(features = features,
-                                            graph_ids = graphs_ids,
-                                            edges_topology = edges_topologies)
+                                       graph_ids = graphs_ids,
+                                       edges_topology = edges_topologies)
 
       
         action = np.argmax(list_q_values)
-        action_features = graphs_features[action]
+        features_correspoding_to_action = graphs_features[action]
         # return 
         # action: a number between 0 and k, corresponding to the chosen path
         # the corresponing features of the resulting graph
-        return action, action_features
+        return action, features_correspoding_to_action
     
     def get_graph_features(self, environment, state_copy):
        # get the graph features and process them to feed them into the neural network
@@ -119,7 +119,7 @@ class Agent():
         # normalizzazione che fa lui, capisci come generalizzarla
         capacity_feature = (capacity_feature - 100.)/200.
 
-        demands = self.environment.list_of_possible_demands
+        demands = environment.list_of_possible_demands
         bw_allocated_feature = np.zeros((environment.num_edges, len(demands)))
         iter = 0
         for i in state_copy[:, 1]: 
@@ -139,8 +139,8 @@ class Agent():
         padding = self.hyperparamters['hidden_dim'] - len(demands) - environment.num_features + 1 # in num_features there is also bw_allocated, so we add 1
         padding = np.zeros((environment.num_edges, padding))
 
-        features = tf.concat([tf.reshape(capacity_feature, (self.environment.num_edges, 1)),
-                              tf.reshape(betweeneess_feature, (self.environment.num_edges, 1)),   # reshape to go from (num_edges,) to (num_edges, 1) for the concatenation
+        features = tf.concat([tf.reshape(capacity_feature, (environment.num_edges, 1)),
+                              tf.reshape(betweeneess_feature, (environment.num_edges, 1)),   # reshape to go from (num_edges,) to (num_edges, 1) for the concatenation
                               bw_allocated_feature, 
                               padding
                               ], 
@@ -150,13 +150,12 @@ class Agent():
     
     def _forward_pass(self, features_s, graph_id_s, edges_topology_s, features_s_prime, graph_id_s_prime, edges_topology_s_prime):
       # s is the previous state, s' is the one we end up when taking the action
-
       # primary network
       prediction_state = self.q_network(features_s,
                                         graph_id_s,
                                         edges_topology_s,
                                         training=True)
-      # secondary network (we don't compute gradient for it)
+      # secondary network (we don't compute gradient for it)a
       preds_next_target = tf.stop_gradient(self.target_network(features_s_prime,
                                                                graph_id_s_prime,
                                                                edges_topology_s_prime,
@@ -203,10 +202,15 @@ class Agent():
 
 
       # Computes the gradient using operations recorded in context of this tape
-      grad = tape.gradient(loss, self.q_network.variables)
+      grad = tape.gradient(loss, self.q_network.trainable_variables)
+
       #gradients, _ = tf.clip_by_global_norm(grad, 5.0)
-      gradients = [tf.clip_by_value(gradient, -1., 1.) for gradient in grad]
-      self.optimizer.apply_gradients(zip(gradients, self.q_network.variables))
+
+      #pprint(self.q_network.trainable_variables)
+      #pprint(self.q_network.variables)
+
+      grad = [tf.clip_by_value(gradient, -1., 1.) for gradient in grad]
+      self.optimizer.apply_gradients(zip(grad, self.q_network.trainable_variables))
       del tape
       return grad, loss
     
@@ -230,13 +234,11 @@ class Agent():
 
 
     def add_sample_to_memory(self, environment, features_s, action, reward, done, new_state, new_demand, new_source, new_destination):
-       
        # state S
        graph_id_s = tf.fill([tf.shape(features_s)[0]], 0)
        edges_topology_s = environment.edges_topology
 
        # state S'
-       state = np.copy(new_state)
        first_k_shortest_paths = self.environment.first_k_shortest_paths[str(new_source) + ':' + str(new_destination)]
        edges_topology = environment.edges_topology
        shift = np.max(edges_topology, axis=1)[:, np.newaxis] + 1 
@@ -244,19 +246,18 @@ class Agent():
        graphs_features_s_prime = []
        edges_topologies_s_prime = []
        # iterate over all k paths, allocate the demand, extract the corresponding features
-       for i, path in enumerate(first_k_shortest_paths):
-          state_copy = np.copy(state)
+       for i, path_edges in enumerate(first_k_shortest_paths):
+          state_copy = np.copy(new_state)
           # allocate the demand on all path edges
-          state[path,1] += new_demand # la bw_allocated è la seconda colonna, trova un modo piu carino per quando ci saranno più features
+          state_copy[path_edges,1] = new_demand 
           features = self.get_graph_features(self.environment, state_copy)
           graphs_features_s_prime.append(features)
-          edges_topologies_s_prime.append(edges_topology + i*shift)
+          edges_topologies_s_prime.append(edges_topology + i*shift) # se non va qualcosa controlla questo
 
         # prepare other inputs for the neural network
        features_s_prime = tf.concat(graphs_features_s_prime, axis=0)  # shape: (num_edges x k) x num_features
        graphs_ids_s_prime = tf.concat([[i]*self.environment.num_edges for i in range(len(first_k_shortest_paths))], axis=0) # shape: 1 x (num_edges x k)
        edges_topologies_s_prime = tf.concat(edges_topologies_s_prime, axis=0)  # shape  (2 x k) x num_edge_topology
-
 
 
        self.memory.append((

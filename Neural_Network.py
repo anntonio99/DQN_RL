@@ -10,31 +10,40 @@ class MessagePassingNN(tf.keras.Model):
         super(MessagePassingNN, self).__init__()
         self.hparams = hparams
 
-        # Define layers here
-        self.Message = tf.keras.models.Sequential()
+        # meassage passing
+        self.Message = tf.keras.models.Sequential(name='message_passing')
+
         self.Message.add(keras.layers.Dense(self.hparams['hidden_dim'],
-                                            activation=tf.nn.selu, name="FirstLayer"))
+                                            activation=tf.nn.selu, 
+                                            name="FirstLayer"))
 
-        self.Update = tf.keras.layers.GRUCell(self.hparams['hidden_dim'], dtype=tf.float32)
+        # update of embeddings based on messages
+        self.Update = tf.keras.layers.GRUCell(self.hparams['hidden_dim'], dtype=tf.float32, name='recursive_update')
 
-        self.Readout = tf.keras.models.Sequential()
+        # actual output of the network
+        self.Readout = tf.keras.models.Sequential(name='readout')
+
         self.Readout.add(keras.layers.Dense(self.hparams['readout_units'],
                                             activation=tf.nn.selu,
                                             kernel_regularizer=regularizers.l2(hparams['l2']),
                                             name="Readout1"))
+        
         self.Readout.add(keras.layers.Dropout(rate=hparams['dropout_rate']))
+
         self.Readout.add(keras.layers.Dense(self.hparams['readout_units'],
                                             activation=tf.nn.selu,
                                             kernel_regularizer=regularizers.l2(hparams['l2']),
                                             name="Readout2"))
+        
         self.Readout.add(keras.layers.Dropout(rate=hparams['dropout_rate']))
+
         self.Readout.add(keras.layers.Dense(1, kernel_regularizer=regularizers.l2(hparams['l2']),
                                             name="Readout3"))
 
     def build(self, input_shape=None):
         self.Message.build(input_shape=tf.TensorShape([None, self.hparams['hidden_dim']*2]))
         self.Update.build(input_shape=tf.TensorShape([None,self.hparams['hidden_dim']]))
-        self.Readout.build(input_shape=[None, self.hparams['hidden_dim']])
+        self.Readout.build(input_shape=tf.TensorShape([None, self.hparams['hidden_dim']]))
         self.built = True
 
     @tf.function
@@ -43,7 +52,7 @@ class MessagePassingNN(tf.keras.Model):
         num_edges = features.shape[0]
         first = edges_topology[0, :] # first row
         second = edges_topology[1, :]  # second row
-
+        
         # Execute T times
         for _ in range(self.hparams['T']):
 
@@ -55,9 +64,6 @@ class MessagePassingNN(tf.keras.Model):
  
             ### 1.a Message passing for link with all it's neighbours
             outputs = self.Message(edgesConcat) # dim: (n_graphs x n_connections) x (hidden_dimension)
-            
-            #print(outputs)
-            #print(second)
 
             ### 1.b Sum of output values according to link id index
             edges_inputs = tf.math.unsorted_segment_sum(data=outputs, segment_ids=second, # dim: (n_graphs x n_edges) x (hidden_dimension)
@@ -72,6 +78,6 @@ class MessagePassingNN(tf.keras.Model):
         # Perform sum of all hidden states
         edges_combi_outputs = tf.math.segment_sum(link_state, graph_ids, name=None)
 
-        r = self.Readout(edges_combi_outputs,training=training)
+        r = self.Readout(edges_combi_outputs, training=training)
         
         return r

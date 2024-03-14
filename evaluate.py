@@ -1,16 +1,22 @@
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+import tensorflow as tf
 import numpy as np
 from other_agents.random_agent import random_Agent
 from other_agents.shortest_path_agent import shortest_path_Agent
 from Agent import Agent
 from Environment import Environment
 from utils import create_complex_graph
+import os
+import glob
+
 
 
 g = create_complex_graph()
 
 
-NUMBER_OF_EPISODES = 10
-NUMBER_OF_DEMANDS_PER_EPISODE = 100
+NUMBER_OF_EPISODES = 30
+NUMBER_OF_DEMANDS_PER_EPISODE = 200
 
 list_of_demands = [8, 32, 64]
 
@@ -31,8 +37,8 @@ def evaluate_agent(agent, environment, episodes):
                 state, _, _, _ = environment.reset(demand, source, destination)
             
             # allocate the demand
-            action, _ = agent.act(state, demand, source, destination, True)  # perchè qui ho in output lo stato, è uguale a quello in input, no?
-            new_state, reward, done, _, _, _ = environment.make_step(action, demand, source, destination)
+            action, _ = agent.act(environment, state, demand, source, destination, True)  
+            new_state, reward, done, _, _, _ = environment.make_step(state, action, demand, source, destination)
             cumulative_rewards[episode_index] += reward
             state = new_state
 
@@ -60,7 +66,13 @@ dqn_environment.generate_environment()
             
 random_agent = random_Agent(random_environment)
 shortest_path_agent = shortest_path_Agent(shortest_path_environment)
+
+# load the model
 dqn_agent = Agent(dqn_environment)
+checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Logs', 'Models')
+checkpoint = tf.train.Checkpoint(model=dqn_agent.primary_network)
+model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*.index'))[0][:-6]
+checkpoint.restore(model_file)
 
 # create episodes
 
@@ -86,7 +98,11 @@ dqn_rewards = evaluate_agent(dqn_agent, dqn_environment, test)
 
 
 # save
-file_path = '/home/antonio/Desktop/Tirocinio/my_code/Logs/'
-np.savetxt(file_path + 'random_agent_rewards.csv', random_rewards, delimiter=',')
-np.savetxt(file_path + 'shortest_path_agent_rewards.csv', shortest_path_rewards, delimiter=',')
-np.savetxt(file_path + 'dqn_rewards.csv', dqn_rewards, delimiter=',')
+
+directory_path = os.path.dirname(os.path.realpath(__file__))
+logs = os.path.join(directory_path, 'Logs')
+
+
+np.savetxt(os.path.join(logs, 'random_agent_rewards.csv'), random_rewards, delimiter=',')
+np.savetxt(os.path.join(logs, 'shortest_path_agent_rewards.csv'), shortest_path_rewards, delimiter=',')
+np.savetxt(os.path.join(logs, 'dqn_rewards.csv'), dqn_rewards, delimiter=',')

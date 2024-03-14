@@ -3,12 +3,11 @@ import numpy as np
 class random_Agent:
     # Selects the path among the k paths with uniform probability
     def __init__(self, environment):
-        self.k = 4
-        self.environment = environment
+        self.k = environment.k
 
-    def act(self, state, demand, source, destination, _ignore_):
+    def act(self, environment, state, demand, source, destination, _ignore_):
 
-        first_k_shortest_paths = self.environment.first_k_shortest_paths[str(source) + ':' + str(destination)]
+        first_k_shortest_paths = environment.first_k_shortest_paths[str(source) + ':' + str(destination)]
         new_state = np.copy(state)
 
         allocable_paths = 0

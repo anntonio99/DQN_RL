@@ -20,6 +20,15 @@ def create_simple_graph():
         G.get_edge_data(i, j)['bandwidth_allocated'] = 0
   return G
 
+def create_simple_graph_2():
+  G = nx.Graph()
+  G.add_nodes_from([0, 1, 2, 3, 4])
+  G.add_edges_from([(0,1), (1,2), (2,3), (3,1), (2,4), (3,4)])
+
+  for i, j in G.edges():
+        G.get_edge_data(i, j)["capacity"] = float(200)
+        G.get_edge_data(i, j)['bandwidth_allocated'] = 0
+  return G
 
 def create_complex_graph():
     G = nx.Graph()

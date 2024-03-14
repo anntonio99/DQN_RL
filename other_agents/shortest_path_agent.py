@@ -7,11 +7,11 @@ class shortest_path_Agent:
     '''
     
     def __init__(self, environment):
-        self.k = 4
-        self.environment = environment
+        self.k = environment.k
 
-    def act(self, state, demand, source, destination, _ignore_):
-        first_k_shortest_paths = self.environment.first_k_shortest_paths[str(source) + ':' + str(destination)]
+
+    def act(self, environment, state, demand, source, destination, _ignore_):
+        first_k_shortest_paths = environment.first_k_shortest_paths[str(source) + ':' + str(destination)]
         allocated = False # Indicates 1 if we allocated the demand, 0 otherwise
         new_state = np.copy(state)
         

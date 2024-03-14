@@ -50,7 +50,10 @@ class Environment(gym.Env):
     second = list()
 
     # For each edge we iterate over all neighbour edges
-    for i, j in self.graph.edges():
+    edges = [tuple(sorted(edge)) for edge in self.graph.edges()]
+    ordered_edges = sorted(edges)
+
+    for i, j in ordered_edges:
           
       neighbour_edges = self.graph.edges(i)
 
@@ -65,7 +68,7 @@ class Environment(gym.Env):
           first.append(self.graph.get_edge_data(i, j)['ID'])
           second.append(self.graph.get_edge_data(m, n)['ID'])
     
-    self.edges_topology = np.array([first, second], dtype='int32')
+    self.edges_topology = tf.constant([first, second], dtype='int32')
 
   def generate_environment(self): #--------------------------------------------------------------------------------------------------------------------------------
 
@@ -78,12 +81,12 @@ class Environment(gym.Env):
     self.get_edges_topology()
 
   
-    # save first k shortest paths for every node
+    # save first k shortest paths for every pair of nodes
     num_shortest_path = np.zeros((self.num_edges)) # for every edge we store the number of (first k) shortest paths that pass through it
     for n1 in self.graph:
       for n2 in self.graph:
-        if (n1 != n2) and (str(i) + ':' + str(j) not in self.first_k_shortest_paths):
-
+        # if (n1 != n2) and (str(i) + ':' + str(j) not in self.first_k_shortest_paths):
+          if (n1 != n2):
             all_shortest_paths = list(nx.all_simple_paths(self.graph, n1, n2, cutoff=nx.diameter(self.graph)*2))  # prima usavo shortest
             all_shortest_paths = sorted(all_shortest_paths, key=lambda item: len(item))
             # switch to edges
@@ -108,12 +111,12 @@ class Environment(gym.Env):
       self.graph.get_edge_data(i, j)['betweenness'] = betweenness
       #print(betweenness)
 
-
+  
     # -1 beacuse we don't consider ID
     self.num_features = len(self.graph.get_edge_data(0, 1)) - 1
 
     # state definition: capacity and bandwidth allocated for all edges
-    self.state = np.zeros((self.num_edges, 2))
+    self.state = np.zeros((self.num_edges, 2)) # first column is the remaining
     self.features = np.zeros((self.num_edges, self.num_features))
 
     # update first column with the edge capacity

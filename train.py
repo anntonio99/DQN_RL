@@ -13,22 +13,24 @@ from utils import create_simple_graph
 from utils import create_complex_graph
 import shutil
 import time
+from pprint import pprint
 
-ITERATIONS = 10
+
+ITERATIONS = 5000
 TRAINING_EPISODES = 20
 EVALUATION_EPISODES = 40
 FIRST_WORK_TRAIN_EPISODE = 60
 
 print_train_every = ITERATIONS//10
 
-evaluation_interval = 1 # evaluate model every ... interations
+evaluate_every = 10 
 epsilon_start_decay = 70
 
 directory_path = os.path.dirname(os.path.realpath(__file__))
 logs = os.path.join(directory_path, 'Logs')
 
-if not os.path.exists(logs):
-    os.makedirs(logs)
+
+os.makedirs(logs, exist_ok=True)
 
 
 
@@ -36,8 +38,10 @@ list_of_possible_demands = [8, 32, 64]
 
 g = create_complex_graph()
 
-env_training = Environment(graph = g, k = 4, list_of_possible_demands = list_of_possible_demands)
-env_eval = Environment(graph = g, k = 4, list_of_possible_demands = list_of_possible_demands)
+k = 4
+
+env_training = Environment(graph = g, k = k, list_of_possible_demands = list_of_possible_demands)
+env_eval = Environment(graph = g, k = k, list_of_possible_demands = list_of_possible_demands)
 
 env_training.generate_environment()
 
@@ -48,7 +52,8 @@ env_eval.generate_environment()
 agent = Agent(env_training)
 
 
-checkpoint = tf.train.Checkpoint(model=agent.q_network, optimizer=agent.optimizer)
+
+checkpoint = tf.train.Checkpoint(model=agent.q_network)
 manager = tf.train.CheckpointManager(checkpoint,
                                      directory=os.path.join(logs, 'Models'), 
                                      max_to_keep=1)
@@ -69,11 +74,7 @@ if RESUME == True: # resume training
         agent.memory = pickle.load(file)
 
 else: # start training from scratch
-
-    # # empty the Logs foler
-     files = glob.glob(os.path.join(logs, '*'))
-    #for f in files:
-        #os.remove(f)
+     
      shutil.rmtree(logs)
      os.makedirs(logs)
      iteration_resume = 0
@@ -117,14 +118,13 @@ for ep_it in range(iteration_resume, ITERATIONS):
         agent.replay(ep_it)
 
         # EPSILON DECAY ------------------------------------------------------------------
-        # Decrease epsilon (from epsion-greedy exploration strategy)
+        # Decrease epsilon
         if ep_it > epsilon_start_decay and agent.epsilon > agent.epsilon_min:
-            agent.epsilon *= agent.epsilon_decay
+            agent.epsilon *= agent.epsilon_decay # perchè lo fa due volte??
             agent.epsilon *= agent.epsilon_decay
 
         # EVALUATE MODEL ------------------------------------------------------------------
-        # We only evaluate the model every evaluation_interval steps
-        if ep_it % evaluation_interval == 0:
+        if ep_it % evaluate_every == 0:
             cumulative_rewards = np.zeros(EVALUATION_EPISODES)
             for eps in range(EVALUATION_EPISODES):
                 state, demand, source, destination = env_eval.reset()
@@ -132,29 +132,32 @@ for ep_it in range(iteration_resume, ITERATIONS):
                 while 1:
                     # We execute evaluation over current state
 
-                    action, _ = agent.act(env_eval, state, demand, source, destination, True)  # forse dovresti passargli l'environment in input
+                    action, _ = agent.act(env_eval, state, demand, source, destination, True)  
 
                     
-                    state, reward, done, demand, source, destination = env_eval.make_step(state, action, demand, source, destination)  # forse dovresti passargli anche lo state
+                    state, reward, done, demand, source, destination = env_eval.make_step(state, action, demand, source, destination)  
                     cumulative_reward = cumulative_reward + reward
                     if done:
                         break
                 cumulative_rewards[eps] = cumulative_reward
             mean_reward = np.mean(cumulative_rewards)
             
+    
             # save model 
             manager.save()
-            # save mean reward
-            with open(os.path.join(logs, 'mean_reward.txt') , "a") as file:
-              file.write('%.3f' % mean_reward + ",")
-
-            # save also the training iteration and epsilon
-            with open(os.path.join(logs, 'train_info.txt'), "w") as file:
-              file.write(str(ep_it) + ',' + str(agent.epsilon))
 
             # save memory
-            pickle.dump(agent.memory, open(os.path.join(logs, 'memory.pkl'), 'wb'))
+            with open(os.path.join(logs, 'memory.pkl'), 'wb') as file:
+                pickle.dump(agent.memory, file)
+        
 
+            # save mean reward
+            with open(os.path.join(logs, 'mean_reward.txt') , "a") as file:
+                file.write('%.3f' % mean_reward + ",")
+
+            # save training iteration and epsilon
+            with open(os.path.join(logs, 'train_info.txt'), "w") as file:
+                file.write(str(ep_it) + ',' + str(agent.epsilon))
 
 
 print('\nEnd of training\n')

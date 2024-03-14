@@ -50,24 +50,35 @@ plt.savefig(os.path.join(directory_path, 'Images', 'log_loss.png'))
 plt.show()
 
 # evaluation rewards -----------------------------------------------------------------------------------------------------------------------------------
-if False:
-    random_rewards = np.loadtxt(os.path.join(logs, 'random_agent_rewards.csv'), delimiter = ',')
-    shortest_path_rewards = np.loadtxt(os.path.join(logs,  'shortest_path_agent_rewards.csv'), delimiter = ',')
-    dqn_rewards = np.loadtxt(os.path.join(logs, 'dqn_rewards.csv'), delimiter = ',')
+
+random_rewards = np.loadtxt(os.path.join(logs, 'random_agent_rewards.csv'), delimiter = ',')
+shortest_path_rewards = np.loadtxt(os.path.join(logs,  'shortest_path_agent_rewards.csv'), delimiter = ',')
+dqn_rewards = np.loadtxt(os.path.join(logs, 'dqn_rewards.csv'), delimiter = ',')
 
 
-    plt.plot(random_rewards, label='Random Agent')
-    plt.plot(shortest_path_rewards, label='Shortest Path Agent')
-    plt.plot(dqn_rewards, label='DQN Agent')
 
-    # Adding labels and title
-    plt.xlabel('Episodes')
-    plt.ylabel('Rewards')
-    plt.title('Evaluation')
-    plt.legend()  # Adding legend to differentiate between lines
+plt.plot(shortest_path_rewards, label='Shortest Path', color = 'r', linestyle=':')
+plt.axhline(y=np.mean(shortest_path_rewards), color = 'r', linestyle=':')
+
+plt.plot(random_rewards, label='Random', color = 'y', linestyle='--')
+plt.axhline(y=np.mean(random_rewards), color = 'y', linestyle='--')
+
+plt.plot(dqn_rewards, label='RL', color = 'b', linestyle='-')
+plt.axhline(y=np.mean(dqn_rewards), color = 'b', linestyle='-')
+
+# Adding labels and title
+plt.xlabel('Episodes')
+plt.ylabel('Rewards')
+plt.title('Evaluation')
+plt.legend()  
 
 
-    plt.show()
+
+
+
+plt.savefig(os.path.join(directory_path, 'Images', 'rewards_other_agents.png'))
+
+plt.show()
 
 
 # box plot -----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -113,9 +124,9 @@ with open(os.path.join(logs, 'train_info.txt'), 'r') as file:
         number_iterations = int(values[0]) + 1
 
 # Plot the array with customization
-plt.plot(np.arange(0, number_iterations, number_iterations//len(rewards)), rewards)
+plt.plot(np.linspace(0, number_iterations, len(rewards)), rewards)
 plt.title('Mean Reward')
-plt.xlabel('Batches')
+plt.xlabel('Iterations')
 plt.ylabel('Reward')
 
 
