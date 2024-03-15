@@ -16,7 +16,7 @@ import time
 from pprint import pprint
 
 
-ITERATIONS = 5000
+ITERATIONS = 500
 TRAINING_EPISODES = 20
 EVALUATION_EPISODES = 40
 FIRST_WORK_TRAIN_EPISODE = 60
@@ -53,7 +53,7 @@ agent = Agent(env_training)
 
 
 
-checkpoint = tf.train.Checkpoint(model=agent.q_network)
+checkpoint = tf.train.Checkpoint(model=agent.q_network, secondary_network=agent.target_network) # se vuoi fare il resume ti devi salvare anche la target network
 manager = tf.train.CheckpointManager(checkpoint,
                                      directory=os.path.join(logs, 'Models'), 
                                      max_to_keep=1)
@@ -85,6 +85,8 @@ else: # start training from scratch
 print('\nStart of training...\n')
 
 start_time = time.time()
+
+max_reward = 0
 
 for ep_it in range(iteration_resume, ITERATIONS):
         if ep_it % print_train_every == 0:
@@ -118,10 +120,9 @@ for ep_it in range(iteration_resume, ITERATIONS):
         agent.replay(ep_it)
 
         # EPSILON DECAY ------------------------------------------------------------------
-        # Decrease epsilon
         if ep_it > epsilon_start_decay and agent.epsilon > agent.epsilon_min:
-            agent.epsilon *= agent.epsilon_decay # perchè lo fa due volte??
-            agent.epsilon *= agent.epsilon_decay
+            agent.epsilon *= agent.epsilon_decay 
+            #agent.epsilon *= agent.epsilon_decay
 
         # EVALUATE MODEL ------------------------------------------------------------------
         if ep_it % evaluate_every == 0:
@@ -130,11 +131,8 @@ for ep_it in range(iteration_resume, ITERATIONS):
                 state, demand, source, destination = env_eval.reset()
                 cumulative_reward = 0
                 while 1:
-                    # We execute evaluation over current state
 
                     action, _ = agent.act(env_eval, state, demand, source, destination, True)  
-
-                    
                     state, reward, done, demand, source, destination = env_eval.make_step(state, action, demand, source, destination)  
                     cumulative_reward = cumulative_reward + reward
                     if done:
@@ -142,14 +140,17 @@ for ep_it in range(iteration_resume, ITERATIONS):
                 cumulative_rewards[eps] = cumulative_reward
             mean_reward = np.mean(cumulative_rewards)
             
-    
-            # save model 
-            manager.save()
+            if mean_reward > max_reward:
+                print('ciaoooooooooo')
+                max_reward = mean_reward
+                # save model
+                manager.save()
 
             # save memory
+            '''
             with open(os.path.join(logs, 'memory.pkl'), 'wb') as file:
                 pickle.dump(agent.memory, file)
-        
+            '''
 
             # save mean reward
             with open(os.path.join(logs, 'mean_reward.txt') , "a") as file:

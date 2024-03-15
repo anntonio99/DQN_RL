@@ -1,6 +1,3 @@
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
-import tensorflow as tf
 import numpy as np
 from other_agents.random_agent import random_Agent
 from other_agents.shortest_path_agent import shortest_path_Agent
@@ -9,7 +6,9 @@ from Environment import Environment
 from utils import create_complex_graph
 import os
 import glob
-
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+import tensorflow as tf
 
 
 g = create_complex_graph()
@@ -70,7 +69,7 @@ shortest_path_agent = shortest_path_Agent(shortest_path_environment)
 # load the model
 dqn_agent = Agent(dqn_environment)
 checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Logs', 'Models')
-checkpoint = tf.train.Checkpoint(model=dqn_agent.primary_network)
+checkpoint = tf.train.Checkpoint(model=dqn_agent.q_network, secondary_network=dqn_agent.target_network)
 model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*.index'))[0][:-6]
 checkpoint.restore(model_file)
 

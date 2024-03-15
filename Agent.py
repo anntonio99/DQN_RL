@@ -53,7 +53,49 @@ class Agent():
        return ids
        
 
-    def act(self, environment, state, demand, source, destination, evaluate):
+
+    def get_graph_features(self, environment, state_copy): # ---------------------------------------------------------------------------------------------------------------------
+       # get the graph features and process them to feed them into the neural network
+       # do not use the state from the environment, use state_copy
+        
+        # capacity_feature = np.array([data['capacity'] for _, _, data in environment.graph.edges(data=True)])
+        capacity_feature = state_copy[:,0]
+        betweeneess_feature = np.array([data['betweenness'] for _, _, data in environment.graph.edges(data=True)])
+
+        # normalizzazione che fa lui, capisci come generalizzarla
+        capacity_feature = (capacity_feature - 100.)/200.
+
+        demands = environment.list_of_possible_demands
+        bw_allocated_feature = np.zeros((environment.num_edges, len(demands)))
+        iter = 0
+        for i in state_copy[:, 1]: 
+            if i == demands[0]:
+                bw_allocated_feature[iter][0] = 1
+            elif i == demands[1]:
+                bw_allocated_feature[iter][1] = 1
+            elif i == demands[2]:
+                bw_allocated_feature[iter][2] = 1
+            iter = iter + 1
+        
+        # convert everything to tensor
+        bw_allocated_feature = tf.convert_to_tensor(bw_allocated_feature, dtype=tf.float32)
+        capacity_feature = tf.convert_to_tensor(capacity_feature, dtype=tf.float32)
+        betweeneess_feature = tf.convert_to_tensor(betweeneess_feature, dtype=tf.float32)
+
+        padding = self.hyperparamters['hidden_dim'] - len(demands) - environment.num_features + 1 # in num_features there is also bw_allocated, so we add 1
+        padding = np.zeros((environment.num_edges, padding))
+
+        features = tf.concat([tf.reshape(capacity_feature, (environment.num_edges, 1)),
+                              tf.reshape(betweeneess_feature, (environment.num_edges, 1)),   # reshape to go from (num_edges,) to (num_edges, 1) for the concatenation
+                              bw_allocated_feature, 
+                              padding
+                              ], 
+                              axis=1)
+      
+        return features
+
+
+    def act(self, environment, state, demand, source, destination, evaluate): #------------------------------------------------------------------------------------------------------
         
         take_random_action = False
 
@@ -109,44 +151,7 @@ class Agent():
         # the corresponing features of the resulting graph
         return action, features_correspoding_to_action
     
-    def get_graph_features(self, environment, state_copy):
-       # get the graph features and process them to feed them into the neural network
-       # do not use the state from the environment, use state_copy
-        
-        capacity_feature = np.array([data['capacity'] for _, _, data in environment.graph.edges(data=True)])
-        betweeneess_feature = np.array([data['betweenness'] for _, _, data in environment.graph.edges(data=True)])
-
-        # normalizzazione che fa lui, capisci come generalizzarla
-        capacity_feature = (capacity_feature - 100.)/200.
-
-        demands = environment.list_of_possible_demands
-        bw_allocated_feature = np.zeros((environment.num_edges, len(demands)))
-        iter = 0
-        for i in state_copy[:, 1]: 
-            if i == demands[0]:
-                bw_allocated_feature[iter][0] = 1
-            elif i == demands[1]:
-                bw_allocated_feature[iter][1] = 1
-            elif i == demands[2]:
-                bw_allocated_feature[iter][2] = 1
-            iter = iter + 1
-        
-        # convert everything to tensor
-        bw_allocated_feature = tf.convert_to_tensor(bw_allocated_feature, dtype=tf.float32)
-        capacity_feature = tf.convert_to_tensor(capacity_feature, dtype=tf.float32)
-        betweeneess_feature = tf.convert_to_tensor(betweeneess_feature, dtype=tf.float32)
-
-        padding = self.hyperparamters['hidden_dim'] - len(demands) - environment.num_features + 1 # in num_features there is also bw_allocated, so we add 1
-        padding = np.zeros((environment.num_edges, padding))
-
-        features = tf.concat([tf.reshape(capacity_feature, (environment.num_edges, 1)),
-                              tf.reshape(betweeneess_feature, (environment.num_edges, 1)),   # reshape to go from (num_edges,) to (num_edges, 1) for the concatenation
-                              bw_allocated_feature, 
-                              padding
-                              ], 
-                              axis=1)
-      
-        return features
+    
     
     def _forward_pass(self, features_s, graph_id_s, edges_topology_s, features_s_prime, graph_id_s_prime, edges_topology_s_prime):
       # s is the previous state, s' is the one we end up when taking the action
@@ -155,11 +160,11 @@ class Agent():
                                         graph_id_s,
                                         edges_topology_s,
                                         training=True)
-      # secondary network (we don't compute gradient for it)a
+      # secondary network (we don't compute gradient for it)
       preds_next_target = tf.stop_gradient(self.target_network(features_s_prime,
                                                                graph_id_s_prime,
                                                                edges_topology_s_prime,
-                                                               training=True))
+                                                               training=False))
       return prediction_state, preds_next_target
     
     def _train_step(self, batch):
@@ -206,8 +211,6 @@ class Agent():
 
       #gradients, _ = tf.clip_by_global_norm(grad, 5.0)
 
-      #pprint(self.q_network.trainable_variables)
-      #pprint(self.q_network.variables)
 
       grad = [tf.clip_by_value(gradient, -1., 1.) for gradient in grad]
       self.optimizer.apply_gradients(zip(grad, self.q_network.trainable_variables))

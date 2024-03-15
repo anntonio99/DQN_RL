@@ -7,6 +7,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import tensorflow as tf
 from gym import spaces
 from time import time
+from pprint import pprint
 
 
 
@@ -136,6 +137,7 @@ class Environment(gym.Env):
 
   def make_step(self, state, action, required_capacity, source, destination): #------------------------------------------------------------------------------------------------
     self.state = np.copy(state)
+
     # take the path corresponding to the action
     chosen_path = self.first_k_shortest_paths[str(source) + ':' + str(destination)][action]
 
