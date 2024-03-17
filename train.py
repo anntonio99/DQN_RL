@@ -16,7 +16,7 @@ import time
 from pprint import pprint
 
 
-ITERATIONS = 500
+ITERATIONS = 10000
 TRAINING_EPISODES = 20
 EVALUATION_EPISODES = 40
 FIRST_WORK_TRAIN_EPISODE = 60
@@ -89,6 +89,7 @@ start_time = time.time()
 max_reward = 0
 
 for ep_it in range(iteration_resume, ITERATIONS):
+        #print(len(agent.memory))
         if ep_it % print_train_every == 0:
             print("Training iteration: ", ep_it, '/', ITERATIONS)
 
@@ -122,10 +123,11 @@ for ep_it in range(iteration_resume, ITERATIONS):
         # EPSILON DECAY ------------------------------------------------------------------
         if ep_it > epsilon_start_decay and agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay 
-            #agent.epsilon *= agent.epsilon_decay
+            agent.epsilon *= agent.epsilon_decay
 
         # EVALUATE MODEL ------------------------------------------------------------------
         if ep_it % evaluate_every == 0:
+           
             cumulative_rewards = np.zeros(EVALUATION_EPISODES)
             for eps in range(EVALUATION_EPISODES):
                 state, demand, source, destination = env_eval.reset()
@@ -141,7 +143,6 @@ for ep_it in range(iteration_resume, ITERATIONS):
             mean_reward = np.mean(cumulative_rewards)
             
             if mean_reward > max_reward:
-                print('ciaoooooooooo')
                 max_reward = mean_reward
                 # save model
                 manager.save()

@@ -16,10 +16,11 @@ values = [float(value) for value in values]
 loss = np.array(values)
 
 # calculate mean
+'''
 reshaped_data = loss.reshape(-1, 6)  # 6 è il numero di batch
 means = np.mean(reshaped_data, axis=1)
 loss = means.reshape(-1)
-
+'''
 # Plot the array with customization
 plt.plot(loss)
 plt.title('Loss')
