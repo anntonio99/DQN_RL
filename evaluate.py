@@ -16,6 +16,11 @@ g = create_complex_graph()
 
 NUMBER_OF_EPISODES = 30
 NUMBER_OF_DEMANDS_PER_EPISODE = 200
+SEED = 9
+
+os.environ['PYTHONHASHSEED']=str(SEED)
+np.random.seed(SEED)
+tf.random.set_seed(1)
 
 list_of_demands = [8, 32, 64]
 
@@ -57,6 +62,7 @@ dqn_environment = Environment(graph = g, k = 4, list_of_possible_demands = list_
 # generate the environments
 
 random_environment.generate_environment()
+
 shortest_path_environment.generate_environment()
 dqn_environment.generate_environment()
 
@@ -64,14 +70,27 @@ dqn_environment.generate_environment()
 # define the agents
             
 random_agent = random_Agent(random_environment)
+random_agent.set_seed(SEED)
 shortest_path_agent = shortest_path_Agent(shortest_path_environment)
 
 # load the model
 dqn_agent = Agent(dqn_environment)
 checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Logs', 'Models')
-checkpoint = tf.train.Checkpoint(model=dqn_agent.q_network, secondary_network=dqn_agent.target_network)
-model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*.index'))[0][:-6]
-checkpoint.restore(model_file)
+#checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'external_logs', '10000')
+checkpoint = tf.train.Checkpoint(model=dqn_agent.q_network)
+model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*'))[1][:-6]
+
+#checkpoint.restore(model_file)
+# SCRIVILO A MANO
+checkpoint.restore(r'C:\Users\ant.rocca\Desktop\Tesi\deep_q_reinforcement_learning\external_logs\10000\ckpt-19')
+
+# print(tf.keras.backend.eval(dqn_agent.q_network.layers[1].weights[0]))
+
+'''
+for layer in dqn_agent.target_network.layers:
+  print(layer.name)
+  print(layer.weights)
+'''
 
 # create episodes
 
@@ -105,3 +124,11 @@ logs = os.path.join(directory_path, 'Logs')
 np.savetxt(os.path.join(logs, 'random_agent_rewards.csv'), random_rewards, delimiter=',')
 np.savetxt(os.path.join(logs, 'shortest_path_agent_rewards.csv'), shortest_path_rewards, delimiter=',')
 np.savetxt(os.path.join(logs, 'dqn_rewards.csv'), dqn_rewards, delimiter=',')
+
+
+
+
+
+
+
+# print(tf.keras.backend.eval(dqn_agent.q_network.layers[0].weights[0]))

@@ -1,9 +1,14 @@
 import numpy as np
+import os
 
 class random_Agent:
     # Selects the path among the k paths with uniform probability
     def __init__(self, environment):
         self.k = environment.k
+
+    def set_seed(self, seed):
+        np.random.seed(seed)
+        os.environ['PYTHONHASHSEED']=str(seed)
 
     def act(self, environment, state, demand, source, destination, _ignore_):
 

@@ -3,6 +3,7 @@ RESUME = False
 import os
 import glob
 import pickle
+import random
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import tensorflow as tf
@@ -20,6 +21,17 @@ ITERATIONS = 10000
 TRAINING_EPISODES = 20
 EVALUATION_EPISODES = 40
 FIRST_WORK_TRAIN_EPISODE = 60
+SEED = 37
+
+
+# set global determinism
+random.seed(SEED)
+np.random.seed(SEED)
+tf.random.set_seed(1)
+tf.keras.utils.set_random_seed(1)
+os.environ['PYTHONHASHSEED']=str(SEED)
+tf.config.threading.set_inter_op_parallelism_threads(1)
+tf.config.threading.set_intra_op_parallelism_threads(1)
 
 print_train_every = ITERATIONS//10
 
@@ -40,20 +52,38 @@ g = create_complex_graph()
 
 k = 4
 
+# define environments
 env_training = Environment(graph = g, k = k, list_of_possible_demands = list_of_possible_demands)
 env_eval = Environment(graph = g, k = k, list_of_possible_demands = list_of_possible_demands)
 
-env_training.generate_environment()
+# set seeds
+env_training.set_seed(SEED)
+env_eval.set_seed(SEED)
 
+# generate environments
+env_training.generate_environment()
 env_eval.generate_environment()
 
 
-
+# define agent
 agent = Agent(env_training)
+# set seed
+agent.set_seed(SEED)
+
+'''
+occhio perchè inizializza solo i pesi del layer recursive update
+capire sta cosa
+
+for layer in agent.target_network.layers:
+  print(layer.name)
+  print(layer.weights)
+
+'''
 
 
 
-checkpoint = tf.train.Checkpoint(model=agent.q_network, secondary_network=agent.target_network) # se vuoi fare il resume ti devi salvare anche la target network
+
+checkpoint = tf.train.Checkpoint(model=agent.q_network) # se vuoi fare il resume ti devi salvare anche la target network
 manager = tf.train.CheckpointManager(checkpoint,
                                      directory=os.path.join(logs, 'Models'), 
                                      max_to_keep=1)
@@ -61,8 +91,11 @@ manager = tf.train.CheckpointManager(checkpoint,
 
 
 if RESUME == True: # resume training
-    model_file = glob.glob(os.path.join(logs, 'Models', 'ckpt-*.index'))[0][:-6]
+    #model_file = glob.glob(os.path.join(logs, 'Models', 'ckpt-*.index'))[0][:-6]
+    checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'external_logs', '2500')
+    model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*.index'))[0][:-6]
     checkpoint.restore(model_file)
+    '''
     with open(os.path.join(logs, 'train_info.txt'), 'r') as file:
     # Read the content of the file
         content = file.read()
@@ -72,12 +105,18 @@ if RESUME == True: # resume training
 
     with open(os.path.join(logs, 'memory.pkl'), 'rb') as file:
         agent.memory = pickle.load(file)
+    '''
+    iteration_resume = 10000
+    agent.epsilon = agent.epsilon_min
+    shutil.rmtree(logs)
+    os.makedirs(logs)
 
 else: # start training from scratch
      
      shutil.rmtree(logs)
      os.makedirs(logs)
      iteration_resume = 0
+
 
 
 # TRAIN ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -88,21 +127,22 @@ start_time = time.time()
 
 max_reward = 0
 
-for ep_it in range(iteration_resume, ITERATIONS):
-        #print(len(agent.memory))
-        if ep_it % print_train_every == 0:
-            print("Training iteration: ", ep_it, '/', ITERATIONS)
+for training_iteration in range(iteration_resume, ITERATIONS):
+        if training_iteration % print_train_every == 0:
+            print("Training iteration: ", training_iteration, '/', ITERATIONS)
 
 
-        if ep_it==0:
+        if training_iteration==0:
             train_episodes = FIRST_WORK_TRAIN_EPISODE
         else:
             train_episodes = TRAINING_EPISODES
 
         # EPISODES ------------------------------------------------------------------
-        for training_episode in range(train_episodes):
+        for episode in range(TRAINING_EPISODES):
+            tf.random.set_seed(1)
             
             state, demand, source, destination = env_training.reset()            
+            
 
             while 1:
                 # The agent chooses an action and returns it along with the features coresponding to the resulting state 
@@ -116,17 +156,21 @@ for ep_it in range(iteration_resume, ITERATIONS):
                 destination = new_destination
                 if done:
                     break
-
+        '''
+        print(demand)
+        print(source)
+        print(destination)
+        '''
         # LEARNING ------------------------------------------------------------------
-        agent.replay(ep_it)
+        agent.replay(training_iteration)
 
         # EPSILON DECAY ------------------------------------------------------------------
-        if ep_it > epsilon_start_decay and agent.epsilon > agent.epsilon_min:
+        if training_iteration > epsilon_start_decay and agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay 
             agent.epsilon *= agent.epsilon_decay
 
         # EVALUATE MODEL ------------------------------------------------------------------
-        if ep_it % evaluate_every == 0:
+        if training_iteration % evaluate_every == 0:
            
             cumulative_rewards = np.zeros(EVALUATION_EPISODES)
             for eps in range(EVALUATION_EPISODES):
@@ -141,7 +185,11 @@ for ep_it in range(iteration_resume, ITERATIONS):
                         break
                 cumulative_rewards[eps] = cumulative_reward
             mean_reward = np.mean(cumulative_rewards)
-            
+            '''
+            print(demand)
+            print(source)
+            print(destination)
+            '''
             if mean_reward > max_reward:
                 max_reward = mean_reward
                 # save model
@@ -159,7 +207,7 @@ for ep_it in range(iteration_resume, ITERATIONS):
 
             # save training iteration and epsilon
             with open(os.path.join(logs, 'train_info.txt'), "w") as file:
-                file.write(str(ep_it) + ',' + str(agent.epsilon))
+                file.write(str(training_iteration) + ',' + str(agent.epsilon))
 
 
 print('\nEnd of training\n')
@@ -171,3 +219,19 @@ hours, remainder = divmod(total_time, 3600)
 minutes = remainder//60
 
 print(f"Model trained in: {int(hours)} hours and {int(minutes)} minutes")
+
+
+
+'''
+for layer in agent.q_network.layers:
+  print(layer.name)
+  print(layer.weights)
+'''
+
+'''
+randomicità
+- generazione source, destination, demand
+- probabilità epsilon 
+- scelta cammino random
+- inizializzazione pesi reti neurali
+'''

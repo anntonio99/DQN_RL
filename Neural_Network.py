@@ -12,9 +12,10 @@ class MessagePassingNN(tf.keras.Model):
 
         # meassage passing
         self.Message = tf.keras.models.Sequential(name='message_passing')
-
+        self.Message.add(keras.Input(shape=(2*self.hparams['hidden_dim'],)))
         self.Message.add(keras.layers.Dense(self.hparams['hidden_dim'],
                                             activation=tf.nn.selu, 
+                                            dtype=tf.float32,
                                             name="FirstLayer"))
 
         # update of embeddings based on messages
@@ -22,6 +23,8 @@ class MessagePassingNN(tf.keras.Model):
 
         # actual output of the network
         self.Readout = tf.keras.models.Sequential(name='readout')
+
+        self.Readout.add(keras.Input(shape=(self.hparams['hidden_dim'],)))
 
         self.Readout.add(keras.layers.Dense(self.hparams['readout_units'],
                                             activation=tf.nn.selu,
@@ -41,9 +44,10 @@ class MessagePassingNN(tf.keras.Model):
                                             name="Readout3"))
 
     def build(self, input_shape=None):
-        self.Message.build(input_shape=tf.TensorShape([None, self.hparams['hidden_dim']*2]))
-        self.Update.build(input_shape=tf.TensorShape([None,self.hparams['hidden_dim']]))
-        self.Readout.build(input_shape=tf.TensorShape([None, self.hparams['hidden_dim']]))
+        #self.Message.build(input_shape=tf.TensorShape([None, self.hparams['hidden_dim']*2]))
+        self.Message.build()
+        self.Update.build(input_shape=(None, self.hparams['hidden_dim']))
+        self.Readout.build()
         self.built = True
 
     @tf.function
@@ -78,6 +82,6 @@ class MessagePassingNN(tf.keras.Model):
         # Perform sum of all hidden states
         edges_combi_outputs = tf.math.segment_sum(link_state, graph_ids, name=None)
 
-        r = self.Readout(edges_combi_outputs, training=training)
+        r = self.Readout(edges_combi_outputs, training=training) # we use the training parameter because it is the only layer(s) that has dropout
         
         return r

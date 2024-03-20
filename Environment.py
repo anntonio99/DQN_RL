@@ -8,7 +8,7 @@ import tensorflow as tf
 from gym import spaces
 from time import time
 from pprint import pprint
-
+import random
 
 
 class Environment(gym.Env):
@@ -41,6 +41,10 @@ class Environment(gym.Env):
 
   def get_edges(self):
     return tf.reshape(tf.convert_to_tensor(list(self.graph.edges())), [2, -1])
+  
+  def set_seed(self, seed):
+    random.seed(seed)
+    np.random.seed(seed)
     
   def get_edges_topology(self):
     '''

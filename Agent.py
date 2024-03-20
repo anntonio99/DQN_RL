@@ -44,14 +44,17 @@ class Agent():
                                                momentum=0.9,
                                                nesterov=True)
       self.environment = environment
-
-    def _get_graph_ids(self, num_edges, num_graphs):  #  mi sa non ti serve 
-       l = []
-       for i in range(num_graphs):
-          l.append(tf.fill((num_edges,), i))
-       ids = tf.concat(l, axis=0)
-       return ids
        
+
+
+    def set_seed(self, seed):
+      random.seed(seed)
+      np.random.seed(seed)
+      tf.random.set_seed(seed)
+      tf.keras.utils.set_random_seed(seed)
+      os.environ['PYTHONHASHSEED']=str(seed)
+    
+    # def initiliaze_networks
 
 
     def get_graph_features(self, environment, state_copy): # ---------------------------------------------------------------------------------------------------------------------
@@ -149,6 +152,7 @@ class Agent():
         # return 
         # action: a number between 0 and k, corresponding to the chosen path
         # the corresponing features of the resulting graph
+
         return action, features_correspoding_to_action
     
     
@@ -164,7 +168,7 @@ class Agent():
       preds_next_target = tf.stop_gradient(self.target_network(features_s_prime,
                                                                graph_id_s_prime,
                                                                edges_topology_s_prime,
-                                                               training=False))
+                                                               training=True))
       return prediction_state, preds_next_target
     
     def _train_step(self, batch):
@@ -271,7 +275,7 @@ class Agent():
                             # reward
                             tf.convert_to_tensor(reward, dtype=tf.float32), 
                             # done
-                            tf.convert_to_tensor(int(done==True), dtype=tf.float32),
+                            tf.convert_to_tensor(int(done==True), dtype=tf.float32), #potrebbe essere sbaglito il dtype=tf.float32 ?
                             # S'
                             features_s_prime, 
                             graphs_ids_s_prime,
