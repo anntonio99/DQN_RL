@@ -24,13 +24,14 @@ env.generate_environment()
 
 
 
-NUMBER_OF_EPISODES = 50
+NUMBER_OF_EPISODES = 40
 
 
 # load model-------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 agent = Agent(env)
-checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'external_logs', '2500')
+#checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'external_logs', '2500')
+checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Logs', 'Models')
 checkpoint = tf.train.Checkpoint(model=agent.q_network, secondary_network=agent.target_network)
 model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*.index'))[0][:-6]
 checkpoint.restore(model_file)
@@ -61,7 +62,7 @@ for i in range(NUMBER_OF_EPISODES):
 
 print('RL')
 print(np.mean(cumulative_rewards))
-print(np.var(cumulative_rewards))
+print(np.std(cumulative_rewards))
 #plt.plot(cumulative_rewards)
 #plt.show()
 
@@ -91,6 +92,6 @@ for i in range(NUMBER_OF_EPISODES):
 
 print('Random')
 print(np.mean(cumulative_rewards))
-print(np.var(cumulative_rewards))
+print(np.std(cumulative_rewards))
 #plt.plot(cumulative_rewards)
 #plt.show()
