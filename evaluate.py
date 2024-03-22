@@ -9,6 +9,7 @@ import glob
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import tensorflow as tf
+import random
 
 
 g = create_complex_graph()
@@ -18,9 +19,15 @@ NUMBER_OF_EPISODES = 30
 NUMBER_OF_DEMANDS_PER_EPISODE = 200
 SEED = 9
 
-os.environ['PYTHONHASHSEED']=str(SEED)
+
+
+random.seed(SEED)
 np.random.seed(SEED)
 tf.random.set_seed(1)
+tf.keras.utils.set_random_seed(1)
+os.environ['PYTHONHASHSEED']=str(SEED)
+tf.config.threading.set_inter_op_parallelism_threads(1)
+tf.config.threading.set_intra_op_parallelism_threads(1)
 
 list_of_demands = [8, 32, 64]
 
@@ -75,22 +82,16 @@ shortest_path_agent = shortest_path_Agent(shortest_path_environment)
 
 # load the model
 dqn_agent = Agent(dqn_environment)
-checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Logs', 'Models')
+
 #checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'external_logs', '10000')
+checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Logs', 'Models')
 checkpoint = tf.train.Checkpoint(model=dqn_agent.q_network)
 model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*'))[1][:-6]
 
-#checkpoint.restore(model_file)
-# SCRIVILO A MANO
-checkpoint.restore(r'C:\Users\ant.rocca\Desktop\Tesi\deep_q_reinforcement_learning\external_logs\10000\ckpt-19')
+checkpoint.restore(model_file)
 
-# print(tf.keras.backend.eval(dqn_agent.q_network.layers[1].weights[0]))
+#checkpoint.restore(r'C:\Users\ant.rocca\Desktop\Tesi\Codice\Logs\Models\ckpt-1.index')
 
-'''
-for layer in dqn_agent.target_network.layers:
-  print(layer.name)
-  print(layer.weights)
-'''
 
 # create episodes
 
@@ -129,6 +130,13 @@ np.savetxt(os.path.join(logs, 'dqn_rewards.csv'), dqn_rewards, delimiter=',')
 
 
 
-
+'''
 
 # print(tf.keras.backend.eval(dqn_agent.q_network.layers[0].weights[0]))
+
+
+
+for layer in dqn_agent.target_network.layers:
+  print(layer.name)
+  print(layer.weights)
+'''

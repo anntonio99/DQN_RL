@@ -37,9 +37,9 @@ class Agent():
       self.gamma = 0.95
       self.k = environment.k
       self.q_network = mpnn(self.hyperparamters)  # primary network
-      self.q_network.build()
+      #self.q_network.build()
       self.target_network = mpnn(self.hyperparamters)  # secondary network
-      self.target_network.build()
+      #self.target_network.build()
       self.optimizer = tf.keras.optimizers.SGD(learning_rate=self.hyperparamters['learning_rate'],
                                                momentum=0.9,
                                                nesterov=True)

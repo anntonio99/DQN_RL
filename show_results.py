@@ -5,6 +5,7 @@ import os
 directory_path = os.path.dirname(os.path.realpath(__file__))
 logs = os.path.join(directory_path, 'Logs')
 
+#logs = r'C:\Users\ant.rocca\Desktop\Tesi\mio\external_logs\2\Logs'
 # loss -----------------------------------------------------------------------------------------------------------------------------------------------
 with open(os.path.join(logs, 'loss.txt'), "r") as file:
     content = file.read()
@@ -16,11 +17,11 @@ values = [float(value) for value in values]
 loss = np.array(values)
 
 # calculate mean
-'''
+
 reshaped_data = loss.reshape(-1, 6)  # 6 è il numero di batch
 means = np.mean(reshaped_data, axis=1)
 loss = means.reshape(-1)
-'''
+
 # Plot the array with customization
 plt.plot(loss)
 plt.title('Loss')

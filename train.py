@@ -17,7 +17,7 @@ import time
 from pprint import pprint
 
 
-ITERATIONS = 10000
+ITERATIONS = 1000
 TRAINING_EPISODES = 20
 EVALUATION_EPISODES = 40
 FIRST_WORK_TRAIN_EPISODE = 60
@@ -70,15 +70,6 @@ agent = Agent(env_training)
 # set seed
 agent.set_seed(SEED)
 
-'''
-occhio perchè inizializza solo i pesi del layer recursive update
-capire sta cosa
-
-for layer in agent.target_network.layers:
-  print(layer.name)
-  print(layer.weights)
-
-'''
 
 
 
@@ -92,8 +83,9 @@ manager = tf.train.CheckpointManager(checkpoint,
 
 if RESUME == True: # resume training
     #model_file = glob.glob(os.path.join(logs, 'Models', 'ckpt-*.index'))[0][:-6]
-    checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'external_logs', '2500')
-    model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*.index'))[0][:-6]
+    checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'external_logs', '2', 'Logs')
+    #model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*.index'))[0][:-6]
+    model_file = r'C:\Users\ant.rocca\Desktop\Tesi\mio\external_logs\2\Logs\Models\ckpt-24'
     checkpoint.restore(model_file)
     '''
     with open(os.path.join(logs, 'train_info.txt'), 'r') as file:
@@ -106,10 +98,6 @@ if RESUME == True: # resume training
     with open(os.path.join(logs, 'memory.pkl'), 'rb') as file:
         agent.memory = pickle.load(file)
     '''
-    iteration_resume = 10000
-    agent.epsilon = agent.epsilon_min
-    shutil.rmtree(logs)
-    os.makedirs(logs)
 
 else: # start training from scratch
      
@@ -156,11 +144,7 @@ for training_iteration in range(iteration_resume, ITERATIONS):
                 destination = new_destination
                 if done:
                     break
-        '''
-        print(demand)
-        print(source)
-        print(destination)
-        '''
+
         # LEARNING ------------------------------------------------------------------
         agent.replay(training_iteration)
 
@@ -185,11 +169,7 @@ for training_iteration in range(iteration_resume, ITERATIONS):
                         break
                 cumulative_rewards[eps] = cumulative_reward
             mean_reward = np.mean(cumulative_rewards)
-            '''
-            print(demand)
-            print(source)
-            print(destination)
-            '''
+
             if mean_reward > max_reward:
                 max_reward = mean_reward
                 # save model
