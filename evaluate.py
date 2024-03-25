@@ -4,15 +4,19 @@ from other_agents.shortest_path_agent import shortest_path_Agent
 from Agent import Agent
 from Environment import Environment
 from utils import create_complex_graph
+from utils import generate_random_graph
 import os
 import glob
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import tensorflow as tf
 import random
+import networkx as nx
+import matplotlib.pyplot as plt
 
 
 g = create_complex_graph()
+
 
 
 NUMBER_OF_EPISODES = 30
@@ -28,6 +32,12 @@ tf.keras.utils.set_random_seed(1)
 os.environ['PYTHONHASHSEED']=str(SEED)
 tf.config.threading.set_inter_op_parallelism_threads(1)
 tf.config.threading.set_intra_op_parallelism_threads(1)
+
+
+#g = generate_random_graph(32)
+#nx.draw(g)
+#plt.show()
+
 
 list_of_demands = [8, 32, 64]
 
@@ -60,31 +70,30 @@ def evaluate_agent(agent, environment, episodes):
     return cumulative_rewards
 
 
-# define the environments
+# define the environment
 
-random_environment = Environment(graph = g, k = 4, list_of_possible_demands = list_of_demands)
-shortest_path_environment = Environment(graph = g, k = 4, list_of_possible_demands = list_of_demands)
-dqn_environment = Environment(graph = g, k = 4, list_of_possible_demands = list_of_demands)
+environment = Environment(graph = g, k = 4, list_of_possible_demands = list_of_demands)
+#shortest_path_environment = Environment(graph = g, k = 4, list_of_possible_demands = list_of_demands)
+#dqn_environment = Environment(graph = g, k = 4, list_of_possible_demands = list_of_demands)
 
 # generate the environments
 
-random_environment.generate_environment()
-
-shortest_path_environment.generate_environment()
-dqn_environment.generate_environment()
+environment.generate_environment()
+#shortest_path_environment.generate_environment()
+#dqn_environment.generate_environment()
 
 
 # define the agents
             
-random_agent = random_Agent(random_environment)
+random_agent = random_Agent(environment)
 random_agent.set_seed(SEED)
-shortest_path_agent = shortest_path_Agent(shortest_path_environment)
+shortest_path_agent = shortest_path_Agent(environment)
 
 # load the model
-dqn_agent = Agent(dqn_environment)
+dqn_agent = Agent(environment)
 
-#checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'external_logs', '10000')
-checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Logs', 'Models')
+checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'external_logs', 'Logs_2', 'Models')
+#checkpoint_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Logs', 'Models')
 checkpoint = tf.train.Checkpoint(model=dqn_agent.q_network)
 model_file = glob.glob(os.path.join(checkpoint_directory, 'ckpt-*'))[1][:-6]
 
@@ -101,19 +110,22 @@ for episode in range(NUMBER_OF_EPISODES):
     for i in range(NUMBER_OF_DEMANDS_PER_EPISODE):
         # generate demand
         demand = np.random.choice(list_of_demands)
-        source = np.random.choice(dqn_environment.num_nodes)
+        source = np.random.choice(environment.num_nodes)
 
         while True:
-            destination = np.random.choice(dqn_environment.num_nodes)
+            destination = np.random.choice(environment.num_nodes)
             if destination != source:
                 requests.append((demand, source, destination))
                 break
     test.append(requests)
 
 
-random_rewards = evaluate_agent(random_agent, random_environment, test)
-shortest_path_rewards = evaluate_agent(shortest_path_agent, shortest_path_environment, test)
-dqn_rewards = evaluate_agent(dqn_agent, dqn_environment, test)
+random_rewards = evaluate_agent(random_agent, environment, test)
+
+shortest_path_rewards = evaluate_agent(shortest_path_agent, environment, test)
+
+dqn_rewards = evaluate_agent(dqn_agent, environment, test)
+
 
 
 # save

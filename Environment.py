@@ -83,16 +83,20 @@ class Environment(gym.Env):
       self.graph.get_edge_data(i, j)['ID'] = id
       id += 1
 
+
     self.get_edges_topology()
 
-  
+
+
     # save first k shortest paths for every pair of nodes
     num_shortest_path = np.zeros((self.num_edges)) # for every edge we store the number of (first k) shortest paths that pass through it
     for n1 in self.graph:
       for n2 in self.graph:
         # if (n1 != n2) and (str(i) + ':' + str(j) not in self.first_k_shortest_paths):
           if (n1 != n2):
+
             all_shortest_paths = list(nx.all_simple_paths(self.graph, n1, n2, cutoff=nx.diameter(self.graph)*2))  # prima usavo shortest
+
             all_shortest_paths = sorted(all_shortest_paths, key=lambda item: len(item))
             # switch to edges
             for i in range(len(all_shortest_paths)):

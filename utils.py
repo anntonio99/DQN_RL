@@ -4,7 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 import tensorflow as tf
 import networkx as nx
-
+import random
 
 
 
@@ -41,4 +41,31 @@ def create_complex_graph():
     for i, j in G.edges():
         G.get_edge_data(i, j)["capacity"] = float(200)
         G.get_edge_data(i, j)['bandwidth_allocated'] = 0
+    return G
+
+
+
+
+
+
+
+
+
+def generate_random_graph(n):
+    # Generate a random connected graph
+    G = nx.connected_watts_strogatz_graph(n, random.randint(1, n // 2), 0.2)
+
+    # Ensure the graph is connected
+    while not nx.is_connected(G):
+        # Randomly select two nodes
+        nodes = list(G.nodes)
+        node1, node2 = random.sample(nodes, 2)
+        # Add an edge between them if it doesn't exist
+        if not G.has_edge(node1, node2):
+            G.add_edge(node1, node2)
+    
+    for i, j in G.edges():
+        G.get_edge_data(i, j)["capacity"] = float(200)
+        G.get_edge_data(i, j)['bandwidth_allocated'] = 0
+
     return G

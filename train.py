@@ -77,7 +77,7 @@ agent.set_seed(SEED)
 checkpoint = tf.train.Checkpoint(model=agent.q_network) # se vuoi fare il resume ti devi salvare anche la target network
 manager = tf.train.CheckpointManager(checkpoint,
                                      directory=os.path.join(logs, 'Models'), 
-                                     max_to_keep=1)
+                                     max_to_keep=5)
 
 
 

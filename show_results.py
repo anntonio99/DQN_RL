@@ -40,7 +40,7 @@ plt.show()
 # log loss ---------------------------------------------------------------------------------------------------------------------------------------------
 
 plt.plot(loss)
-plt.title('Loss')
+plt.title('Log-Loss')
 plt.xlabel('Iterations')
 plt.ylabel('Loss')
 plt.yscale('log')
@@ -125,7 +125,7 @@ with open(os.path.join(logs, 'train_info.txt'), 'r') as file:
         values = content.split(',')
         number_iterations = int(values[0]) + 1
 
-# Plot the array with customization
+
 plt.plot(np.linspace(0, number_iterations, len(rewards)), rewards)
 plt.title('Mean Reward')
 plt.xlabel('Iterations')
